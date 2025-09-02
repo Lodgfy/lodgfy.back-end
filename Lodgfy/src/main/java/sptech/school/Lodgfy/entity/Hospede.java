@@ -1,15 +1,18 @@
 package sptech.school.Lodgfy.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import org.hibernate.validator.constraints.br.CPF;
+
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "hospede")
 public class Hospede {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
     private Long id;
 
     @NotBlank(message = "Nome é obrigatório")
@@ -27,6 +30,7 @@ public class Hospede {
     private String senha;
 
     private LocalDate dataNascimento;
+
     private String cpf;
     private String endereco;
     private String preferencias;
