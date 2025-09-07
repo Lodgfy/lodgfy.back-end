@@ -1,4 +1,4 @@
-package sptech.school.Lodgfy.model;
+package sptech.school.Lodgfy.infrastructure.entities;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "chale")
-public class Chale {
+public class ChaleEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
