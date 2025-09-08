@@ -5,15 +5,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import sptech.school.Lodgfy.business.HospedeService;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*") // ou "*" só para testes
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/hospedes")
@@ -81,5 +84,12 @@ public class HospedeController {
     @GetMapping("/nome/{nome}")
     public ResponseEntity<List<HospedeResponseDTO>> getByNome(@PathVariable String nome) {
         return ResponseEntity.ok(service.buscarPorNome(nome));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<HospedeResponseDTO> login(@RequestBody LoginRequestDTO dto) {
+        return service.login(dto.getCpf(), dto.getSenha())
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 }
