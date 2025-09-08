@@ -23,6 +23,16 @@ public class HospedeService {
     private final HospedeMapper mapper;
 
     public HospedeResponseDTO salvarHospede(HospedeRequestDTO request) {
+        String cpfNormalizado = request.getCpf().replaceAll("\\D", "");
+        request.setCpf(cpfNormalizado);
+
+        if (repository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email já está em uso");
+        }
+
+        if (repository.existsByCpf(request.getCpf())) {
+            throw new RuntimeException("CPF já está em uso");
+        }
 
         return mapper.paraHospedeResponseDTO(
                 repository.save(
@@ -52,11 +62,13 @@ public class HospedeService {
         return repository.findById(id)
                 .map(hospede -> {
 
+                    String cpfNormalizado = hospedeAtualizado.getCpf().replaceAll("\\D", "");
+                    hospedeAtualizado.setCpf(cpfNormalizado);
+
                     if (!hospede.getEmail().equals(hospedeAtualizado.getEmail()) &&
                             repository.existsByEmail(hospedeAtualizado.getEmail())) {
                         throw new RuntimeException("Email já está em uso");
                     }
-
 
                     if (!hospede.getCpf().equals(hospedeAtualizado.getCpf()) &&
                             repository.existsByCpf(hospedeAtualizado.getCpf())) {
@@ -68,7 +80,6 @@ public class HospedeService {
                     hospede.setEmail(hospedeAtualizado.getEmail());
                     hospede.setTelefone(hospedeAtualizado.getTelefone());
                     hospede.setDataNascimento(hospedeAtualizado.getDataNascimento());
-
 
                     if (hospedeAtualizado.getSenha() != null && !hospedeAtualizado.getSenha().isEmpty()) {
                         hospede.setSenha(hospedeAtualizado.getSenha());
@@ -82,4 +93,13 @@ public class HospedeService {
         return mapper.paraListaHospedeResponseDTO(
                 repository.findByNomeContainingIgnoreCase(nome));
     }
+
+    public Optional<HospedeResponseDTO> login(String cpf, String senha) {
+        return repository.findByCpf(cpf)
+                .stream()
+                .filter(h -> h.getSenha().equals(senha))
+                .findFirst()
+                .map(mapper::paraHospedeResponseDTO);
+    }
+
 }
