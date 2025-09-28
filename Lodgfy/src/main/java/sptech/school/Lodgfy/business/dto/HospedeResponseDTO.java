@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import sptech.school.Lodgfy.security.enums.Role;
 
 import java.time.LocalDate;
 
@@ -32,4 +33,43 @@ public class HospedeResponseDTO {
 
     @Schema(example = "123.456.789-00", description = "CPF do hóspede")
     private String cpf;
+
+    private Role role = Role.valueOf("HOSPEDE");
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public LocalDate getDataNascimento() {
+        return dataNascimento;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+    public Role setRole() {
+        return role;
+    }
 }
+
+
+
+
+
+

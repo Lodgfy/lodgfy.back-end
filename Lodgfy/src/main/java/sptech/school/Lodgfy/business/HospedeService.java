@@ -3,14 +3,22 @@ package sptech.school.Lodgfy.business;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
+import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
+import sptech.school.Lodgfy.business.dto.LoginResponseDTO;
 import sptech.school.Lodgfy.business.mapsstruct.HospedeMapper;
 import sptech.school.Lodgfy.infrastructure.entities.HospedeEntity;
 import sptech.school.Lodgfy.infrastructure.repository.HospedeRepository;
+import sptech.school.Lodgfy.security.jwt.JwtService;
+import sptech.school.Lodgfy.business.exceptions.EmailJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.CpfJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.SenhaIncorretaException;
+import sptech.school.Lodgfy.business.exceptions.CpfNaoEncontradoException;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,22 +29,53 @@ public class HospedeService {
 
     private final HospedeRepository repository;
     private final HospedeMapper mapper;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public HospedeResponseDTO salvarHospede(HospedeRequestDTO request) {
         String cpfNormalizado = request.getCpf().replaceAll("\\D", "");
         request.setCpf(cpfNormalizado);
 
         if (repository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email já está em uso");
+            throw new EmailJaExisteException();
         }
 
         if (repository.existsByCpf(request.getCpf())) {
-            throw new RuntimeException("CPF já está em uso");
+            throw new CpfJaExisteException();
         }
+
+        // Hash da senha antes de salvar
+        request.setSenha(passwordEncoder.encode(request.getSenha()));
 
         return mapper.paraHospedeResponseDTO(
                 repository.save(
                         mapper.paraHospedeEntity(request)));
+    }
+
+    public LoginResponseDTO login(LoginRequestDTO loginRequest) {
+        String cpfNormalizado = loginRequest.getCpf().replaceAll("\\D", "");
+
+        HospedeEntity hospede = repository.findByCpf(cpfNormalizado)
+                .orElseThrow(CpfNaoEncontradoException::new);
+
+        if (!passwordEncoder.matches(loginRequest.getSenha(), hospede.getSenha())) {
+            throw new SenhaIncorretaException();
+        }
+
+        String token = jwtService.generateToken(
+                hospede.getCpf(),
+                hospede.getRole(),
+                hospede.getId()
+        );
+
+        return new LoginResponseDTO(
+                token,
+                hospede.getId(),
+                hospede.getCpf(),
+                hospede.getNome(),
+                hospede.getRole(),
+                86400000L // 24 horas em milissegundos
+        );
     }
 
     public List<HospedeResponseDTO> listarHospedes() {
@@ -46,8 +85,6 @@ public class HospedeService {
 
     public Optional<HospedeResponseDTO> buscarPorCpf(String cpf) {
         return repository.findByCpf(cpf)
-                .stream()
-                .findFirst()
                 .map(mapper::paraHospedeResponseDTO);
     }
 
@@ -67,12 +104,12 @@ public class HospedeService {
 
                     if (!hospede.getEmail().equals(hospedeAtualizado.getEmail()) &&
                             repository.existsByEmail(hospedeAtualizado.getEmail())) {
-                        throw new RuntimeException("Email já está em uso");
+                        throw new EmailJaExisteException();
                     }
 
                     if (!hospede.getCpf().equals(hospedeAtualizado.getCpf()) &&
                             repository.existsByCpf(hospedeAtualizado.getCpf())) {
-                        throw new RuntimeException("CPF já está em uso");
+                        throw new CpfJaExisteException();
                     }
 
                     hospede.setNome(hospedeAtualizado.getNome());
@@ -82,7 +119,7 @@ public class HospedeService {
                     hospede.setDataNascimento(hospedeAtualizado.getDataNascimento());
 
                     if (hospedeAtualizado.getSenha() != null && !hospedeAtualizado.getSenha().isEmpty()) {
-                        hospede.setSenha(hospedeAtualizado.getSenha());
+                        hospede.setSenha(passwordEncoder.encode(hospedeAtualizado.getSenha()));
                     }
 
                     return mapper.paraHospedeResponseDTO(repository.save(hospede));
@@ -94,12 +131,5 @@ public class HospedeService {
                 repository.findByNomeContainingIgnoreCase(nome));
     }
 
-    public Optional<HospedeResponseDTO> login(String cpf, String senha) {
-        return repository.findByCpf(cpf)
-                .stream()
-                .filter(h -> h.getSenha().equals(senha))
-                .findFirst()
-                .map(mapper::paraHospedeResponseDTO);
-    }
 
 }
