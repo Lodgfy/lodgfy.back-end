@@ -26,13 +26,13 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Endpoints públicos
+                // Endpoints completamente públicos (sem filtros)
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/api/hospedes").permitAll() // POST para cadastro
-                .requestMatchers("/api/hospedes/login").permitAll() // Login específico
 
                 // Swagger/OpenAPI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/swagger-ui.html").permitAll()
 
                 // Endpoints que requerem autenticação
                 .requestMatchers("/api/hospedes/**").hasAnyRole("HOSPEDE", "ADMIN")

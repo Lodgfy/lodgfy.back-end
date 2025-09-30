@@ -27,9 +27,6 @@ public class HospedeController {
 
     private final HospedeService service;
 
-//    public HospedeController(HospedeService service) {
-//        this.service = service;
-//    }
 
     @Operation(summary = "Lista todos os hóspedes", description = "Retorna uma lista com todos os hóspedes cadastrados")
     @ApiResponse(responseCode = "200", description = "Lista de hóspedes encontrada com sucesso")

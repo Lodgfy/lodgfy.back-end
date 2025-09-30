@@ -2,6 +2,7 @@ package sptech.school.Lodgfy.business;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HospedeService {
 
     private final HospedeRepository repository;
@@ -53,29 +55,68 @@ public class HospedeService {
     }
 
     public LoginResponseDTO login(LoginRequestDTO loginRequest) {
-        String cpfNormalizado = loginRequest.getCpf().replaceAll("\\D", "");
+        log.info("Iniciando processo de login para CPF: {}", loginRequest.getCpf());
 
-        HospedeEntity hospede = repository.findByCpf(cpfNormalizado)
-                .orElseThrow(CpfNaoEncontradoException::new);
+        // Validações básicas com logs mais detalhados
+        if (loginRequest.getCpf() == null || loginRequest.getCpf().trim().isEmpty()) {
+            log.error("CPF não fornecido na requisição de login");
+            throw new CpfNaoEncontradoException();
+        }
 
-        if (!passwordEncoder.matches(loginRequest.getSenha(), hospede.getSenha())) {
+        if (loginRequest.getSenha() == null || loginRequest.getSenha().trim().isEmpty()) {
+            log.error("Senha não fornecida na requisição de login");
             throw new SenhaIncorretaException();
         }
 
-        String token = jwtService.generateToken(
-                hospede.getCpf(),
-                hospede.getRole(),
-                hospede.getId()
-        );
+        String cpfNormalizado = loginRequest.getCpf().replaceAll("\\D", "");
+        log.info("CPF normalizado: {}", cpfNormalizado);
 
-        return new LoginResponseDTO(
-                token,
-                hospede.getId(),
-                hospede.getCpf(),
-                hospede.getNome(),
-                hospede.getRole(),
-                86400000L // 24 horas em milissegundos
-        );
+        // Busca o hóspede no banco
+        Optional<HospedeEntity> hospedeOpt = repository.findByCpf(cpfNormalizado);
+        if (hospedeOpt.isEmpty()) {
+            log.warn("CPF não encontrado no banco de dados: {}", cpfNormalizado);
+            throw new CpfNaoEncontradoException();
+        }
+
+        HospedeEntity hospede = hospedeOpt.get();
+        log.info("Hóspede encontrado: {} (ID: {})", hospede.getNome(), hospede.getId());
+
+        // Verifica a senha
+        boolean senhaCorreta = passwordEncoder.matches(loginRequest.getSenha(), hospede.getSenha());
+        log.info("Resultado da verificação de senha: {}", senhaCorreta);
+
+        if (!senhaCorreta) {
+            log.warn("Senha incorreta para CPF: {}", cpfNormalizado);
+            throw new SenhaIncorretaException();
+        }
+
+        log.info("Senha validada com sucesso para CPF: {}", cpfNormalizado);
+
+        // Gera o token JWT
+        try {
+            String token = jwtService.generateToken(
+                    hospede.getCpf(),
+                    hospede.getRole(),
+                    hospede.getId()
+            );
+            log.info("Token JWT gerado com sucesso para CPF: {}", cpfNormalizado);
+
+            LoginResponseDTO response = new LoginResponseDTO(
+                    token,
+                    hospede.getId(),
+                    hospede.getCpf(),
+                    hospede.getNome(),
+                    hospede.getRole(),
+                    86400000L // 24 horas em milissegundos
+            );
+
+            log.info("Login concluído com sucesso para CPF: {}", cpfNormalizado);
+            return response;
+
+        } catch (Exception e) {
+            log.error("Erro ao gerar token JWT para CPF {}: {}", cpfNormalizado, e.getMessage());
+            throw new RuntimeException("Erro interno durante o login");
+        }
     }
 
     public List<HospedeResponseDTO> listarHospedes() {
