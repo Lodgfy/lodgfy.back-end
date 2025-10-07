@@ -4,8 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ResponseStatus(HttpStatus.CONFLICT)
-public class ChaleJaExisteException extends ConflictException {
-    public ChaleJaExisteException(String numero) {
-        super("Já existe um chalé com o número: " + numero);
+public class ConflictException extends RuntimeException {
+    public ConflictException(String message) {
+        super(message);
     }
 }

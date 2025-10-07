@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import sptech.school.Lodgfy.business.dto.ChaleRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleResponseDTO;
 import sptech.school.Lodgfy.business.exceptions.ChaleJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.ResourceNotFoundException;
 import sptech.school.Lodgfy.business.mapsstruct.ChaleMapper;
 import sptech.school.Lodgfy.infrastructure.repository.ChaleRepository;
 
@@ -21,7 +22,7 @@ public class ChaleService {
 
     public ChaleResponseDTO salvarChale(ChaleRequestDTO request) {
         if (repository.existsByNumero(request.getNumero())) {
-            throw new ChaleJaExisteException("Já existe um chalé cadastrado com este número");
+            throw new ChaleJaExisteException(request.getNumero());
         }
 
         return mapper.paraChaleResponseDTO(
@@ -35,13 +36,14 @@ public class ChaleService {
     }
 
     public Optional<ChaleResponseDTO> buscarPorId(Long id) {
-        return repository.findById(id)
-                .map(mapper::paraChaleResponseDTO);
+        return Optional.ofNullable(repository.findById(id)
+                .map(mapper::paraChaleResponseDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Chalé não encontrado com id: " + id)));
     }
 
     public void deletarChalePorId(Long id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Chalé não encontrado");
+            throw new ResourceNotFoundException("Chalé não encontrado com id: " + id);
         }
         repository.deleteById(id);
     }
@@ -56,7 +58,7 @@ public class ChaleService {
                 .map(chale -> {
                     if (!chale.getNumero().equals(chaleAtualizado.getNumero()) &&
                             repository.existsByNumero(chaleAtualizado.getNumero())) {
-                        throw new RuntimeException("Número de chalé já está em uso");
+                        throw new ChaleJaExisteException(chaleAtualizado.getNumero());
                     }
 
                     chale.setNome(chaleAtualizado.getNome());
