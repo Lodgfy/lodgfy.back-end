@@ -1,6 +1,9 @@
 package sptech.school.Lodgfy.business;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
@@ -8,18 +11,28 @@ import sptech.school.Lodgfy.business.exceptions.HospedeJaExisteException;
 import sptech.school.Lodgfy.business.exceptions.BadRequestException;
 import sptech.school.Lodgfy.business.exceptions.ConflictException;
 import sptech.school.Lodgfy.business.exceptions.ResourceNotFoundException;
+import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
+import sptech.school.Lodgfy.business.dto.LoginResponseDTO;
 import sptech.school.Lodgfy.business.mapsstruct.HospedeMapper;
 import sptech.school.Lodgfy.infrastructure.repository.HospedeRepository;
+import sptech.school.Lodgfy.security.jwt.JwtService;
+import sptech.school.Lodgfy.business.exceptions.EmailJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.CpfJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.SenhaIncorretaException;
+import sptech.school.Lodgfy.business.exceptions.CpfNaoEncontradoException;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HospedeService {
 
     private final HospedeRepository repository;
     private final HospedeMapper mapper;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public HospedeResponseDTO salvarHospede(HospedeRequestDTO request) {
         // Validação de dados obrigatórios
@@ -54,11 +67,84 @@ public class HospedeService {
 
         if (repository.existsByCpf(request.getCpf())) {
             throw new HospedeJaExisteException(request.getCpf());
+            throw new EmailJaExisteException();
         }
+
+        if (repository.existsByCpf(request.getCpf())) {
+            throw new CpfJaExisteException();
+        }
+
+        // Hash da senha antes de salvar
+        request.setSenha(passwordEncoder.encode(request.getSenha()));
 
         return mapper.paraHospedeResponseDTO(
                 repository.save(
                         mapper.paraHospedeEntity(request)));
+    }
+
+    public LoginResponseDTO login(LoginRequestDTO loginRequest) {
+        log.info("Iniciando processo de login para CPF: {}", loginRequest.getCpf());
+
+        // Validações básicas com logs mais detalhados
+        if (loginRequest.getCpf() == null || loginRequest.getCpf().trim().isEmpty()) {
+            log.error("CPF não fornecido na requisição de login");
+            throw new CpfNaoEncontradoException();
+        }
+
+        if (loginRequest.getSenha() == null || loginRequest.getSenha().trim().isEmpty()) {
+            log.error("Senha não fornecida na requisição de login");
+            throw new SenhaIncorretaException();
+        }
+
+        String cpfNormalizado = loginRequest.getCpf().replaceAll("\\D", "");
+        log.info("CPF normalizado: {}", cpfNormalizado);
+
+        // Busca o hóspede no banco
+        Optional<HospedeEntity> hospedeOpt = repository.findByCpf(cpfNormalizado);
+        if (hospedeOpt.isEmpty()) {
+            log.warn("CPF não encontrado no banco de dados: {}", cpfNormalizado);
+            throw new CpfNaoEncontradoException();
+        }
+
+        HospedeEntity hospede = hospedeOpt.get();
+        log.info("Hóspede encontrado: {} (ID: {})", hospede.getNome(), hospede.getId());
+
+        // Verifica a senha
+        boolean senhaCorreta = passwordEncoder.matches(loginRequest.getSenha(), hospede.getSenha());
+        log.info("Resultado da verificação de senha: {}", senhaCorreta);
+
+        if (!senhaCorreta) {
+            log.warn("Senha incorreta para CPF: {}", cpfNormalizado);
+            throw new SenhaIncorretaException();
+        }
+
+        log.info("Senha validada com sucesso para CPF: {}", cpfNormalizado);
+
+        // Gera o token JWT
+        try {
+            String token = jwtService.generateToken(
+                    hospede.getCpf(),
+                    hospede.getRole(),
+                    hospede.getId()
+            );
+            log.info("Token JWT gerado com sucesso para CPF: {}", cpfNormalizado);
+
+            LoginResponseDTO response = new LoginResponseDTO(
+                    token,
+                    hospede.getId(),
+                    hospede.getCpf(),
+                    hospede.getNome(),
+                    hospede.getRole(),
+                    86400000L // 24 horas em milissegundos
+            );
+
+            log.info("Login concluído com sucesso para CPF: {}", cpfNormalizado);
+            return response;
+
+        } catch (Exception e) {
+            log.error("Erro ao gerar token JWT para CPF {}: {}", cpfNormalizado, e.getMessage());
+            throw new RuntimeException("Erro interno durante o login");
+        }
     }
 
     public List<HospedeResponseDTO> listarHospedes() {
@@ -83,6 +169,7 @@ public class HospedeService {
         }
 
         return repository.findByCpf(cpfNormalizado)
+        return repository.findByCpf(cpf)
                 .map(mapper::paraHospedeResponseDTO);
     }
 
@@ -132,11 +219,13 @@ public class HospedeService {
                     if (!hospede.getEmail().equals(hospedeAtualizado.getEmail()) &&
                             repository.existsByEmail(hospedeAtualizado.getEmail())) {
                         throw new BadRequestException("Email já está em uso");
+                        throw new EmailJaExisteException();
                     }
 
                     if (!hospede.getCpf().equals(hospedeAtualizado.getCpf()) &&
                             repository.existsByCpf(hospedeAtualizado.getCpf())) {
                         throw new HospedeJaExisteException(hospedeAtualizado.getCpf());
+                        throw new CpfJaExisteException();
                     }
 
                     hospede.setNome(hospedeAtualizado.getNome());
@@ -146,7 +235,7 @@ public class HospedeService {
                     hospede.setDataNascimento(hospedeAtualizado.getDataNascimento());
 
                     if (hospedeAtualizado.getSenha() != null && !hospedeAtualizado.getSenha().isEmpty()) {
-                        hospede.setSenha(hospedeAtualizado.getSenha());
+                        hospede.setSenha(passwordEncoder.encode(hospedeAtualizado.getSenha()));
                     }
 
                     return mapper.paraHospedeResponseDTO(repository.save(hospede));

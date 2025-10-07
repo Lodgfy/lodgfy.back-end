@@ -9,11 +9,14 @@ import org.springframework.http.HttpStatus;
 import sptech.school.Lodgfy.business.HospedeService;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
+import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
+import sptech.school.Lodgfy.business.dto.LoginResponseDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
 import sptech.school.Lodgfy.business.exceptions.ResourceNotFoundException;
+import sptech.school.Lodgfy.security.enums.Role;
 
 import java.util.List;
 
@@ -25,6 +28,7 @@ import java.util.List;
 public class HospedeController {
 
     private final HospedeService service;
+
 
     @Operation(summary = "Lista todos os hóspedes", description = "Retorna uma lista com todos os hóspedes cadastrados")
     @ApiResponses(value = {
@@ -57,6 +61,8 @@ public class HospedeController {
     })
     @PostMapping
     public ResponseEntity<HospedeResponseDTO> createHospede(@Valid @RequestBody HospedeRequestDTO dto) {
+        // Garante que todo cadastro será sempre HOSPEDE
+         dto.setRole(Role.HOSPEDE);
         HospedeResponseDTO hospedeResponse = service.salvarHospede(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(hospedeResponse);
     }
@@ -103,11 +109,18 @@ public class HospedeController {
             @ApiResponse(responseCode = "200", description = "Login realizado com sucesso"),
             @ApiResponse(responseCode = "400", description = "CPF ou senha não informados ou CPF inválido"),
             @ApiResponse(responseCode = "401", description = "CPF ou senha inválidos")
+    @Operation(summary = "Login de hóspede", description = "Autentica um hóspede e retorna token JWT")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login realizado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Credenciais inválidas")
     })
     @PostMapping("/login")
-    public ResponseEntity<HospedeResponseDTO> login(@RequestBody LoginRequestDTO dto) {
-        return service.login(dto.getCpf(), dto.getSenha())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequest) {
+        try {
+            LoginResponseDTO response = service.login(loginRequest);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 }
