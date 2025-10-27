@@ -38,6 +38,42 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND));
     }
 
+    @ExceptionHandler(ReservaNaoEncontradaException.class)
+    public ResponseEntity<Map<String, Object>> handleReservaNaoEncontrada(ReservaNaoEncontradaException ex) {
+        log.warn("Reserva não encontrada: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND));
+    }
+
+    @ExceptionHandler(ChaleIndisponivelException.class)
+    public ResponseEntity<Map<String, Object>> handleChaleIndisponivel(ChaleIndisponivelException ex) {
+        log.warn("Chalé indisponível: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST));
+    }
+
+    @ExceptionHandler(HospedeNaoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> handleHospedeNaoEncontrado(HospedeNaoEncontradoException ex) {
+        log.warn("Hóspede não encontrado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(createErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND));
+    }
+
+    @ExceptionHandler(DataReservaInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleDataReservaInvalida(DataReservaInvalidaException ex) {
+        log.warn("Data de reserva inválida: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST));
+    }
+
+    @ExceptionHandler(ReservaConflitanteException.class)
+    public ResponseEntity<Map<String, Object>> handleReservaConflitante(ReservaConflitanteException ex) {
+        log.warn("Conflito de reserva: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(createErrorResponse(ex.getMessage(), HttpStatus.CONFLICT));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        log.error("Argumento inválido: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
         log.error("Erro interno: {}", ex.getMessage(), ex);
