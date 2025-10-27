@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import sptech.school.Lodgfy.business.HospedeService;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
+import sptech.school.Lodgfy.business.dto.HospedeSignUpRequestDTO;
 import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
 import sptech.school.Lodgfy.business.dto.LoginResponseDTO;
 import jakarta.validation.Valid;
@@ -104,5 +105,21 @@ public class HospedeController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+    }
+
+    /**
+     * Endpoint público para autocadastro de hóspedes.
+     * Não requer JWT. Role sempre será HOSPEDE.
+     */
+    @Operation(summary = "Autocadastro de hóspede (público)", description = "Permite que um novo hóspede se cadastre sem necessidade de autenticação")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Hóspede cadastrado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "CPF ou email já cadastrado")
+    })
+    @PostMapping("/registrar")
+    public ResponseEntity<HospedeResponseDTO> registrar(@RequestBody @Valid HospedeSignUpRequestDTO dto) {
+        HospedeResponseDTO response = service.autocadastrar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

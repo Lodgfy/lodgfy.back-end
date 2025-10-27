@@ -6,15 +6,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import sptech.school.Lodgfy.business.dto.HospedeRequestDTO;
 import sptech.school.Lodgfy.business.dto.HospedeResponseDTO;
+import sptech.school.Lodgfy.business.dto.HospedeSignUpRequestDTO;
 import sptech.school.Lodgfy.business.dto.LoginRequestDTO;
 import sptech.school.Lodgfy.business.dto.LoginResponseDTO;
 import sptech.school.Lodgfy.business.mapsstruct.HospedeMapper;
 import sptech.school.Lodgfy.infrastructure.entities.HospedeEntity;
 import sptech.school.Lodgfy.infrastructure.repository.HospedeRepository;
+import sptech.school.Lodgfy.security.enums.Role;
 import sptech.school.Lodgfy.security.jwt.JwtService;
 import sptech.school.Lodgfy.business.exceptions.EmailJaExisteException;
 import sptech.school.Lodgfy.business.exceptions.CpfJaExisteException;
@@ -54,6 +57,13 @@ public class HospedeService {
                         mapper.paraHospedeEntity(request)));
     }
 
+    /**
+     * Verifica se uma string está em formato BCrypt
+     */
+    private boolean isBcryptHash(String password) {
+        return password != null && password.matches("^\\$2[aby]?\\$\\d{2}\\$.*");
+    }
+
     public LoginResponseDTO login(LoginRequestDTO loginRequest) {
         log.info("Iniciando processo de login para CPF: {}", loginRequest.getCpf());
 
@@ -66,6 +76,12 @@ public class HospedeService {
         if (loginRequest.getSenha() == null || loginRequest.getSenha().trim().isEmpty()) {
             log.error("Senha não fornecida na requisição de login");
             throw new SenhaIncorretaException();
+        }
+
+        // Detectar se enviou hash BCrypt por engano
+        if (isBcryptHash(loginRequest.getSenha())) {
+            log.error("Tentativa de login com hash BCrypt ao invés de senha em texto puro");
+            throw new IllegalArgumentException("Envie a senha em texto puro, não o hash BCrypt. Use a senha original do cadastro (ex: 'Senha@123')");
         }
 
         String cpfNormalizado = loginRequest.getCpf().replaceAll("\\D", "");
@@ -81,7 +97,14 @@ public class HospedeService {
         HospedeEntity hospede = hospedeOpt.get();
         log.info("Hóspede encontrado: {} (ID: {})", hospede.getNome(), hospede.getId());
 
-        // Verifica a senha
+        // Garante que a senha no banco está em BCrypt (migração on-the-fly se necessário)
+        if (!isBcryptHash(hospede.getSenha())) {
+            log.warn("Senha no banco não está em BCrypt para CPF: {}. Migrando...", cpfNormalizado);
+            hospede.setSenha(passwordEncoder.encode(hospede.getSenha()));
+            repository.save(hospede);
+        }
+
+        // Verifica a senha (raw password vs encoded hash)
         boolean senhaCorreta = passwordEncoder.matches(loginRequest.getSenha(), hospede.getSenha());
         log.info("Resultado da verificação de senha: {}", senhaCorreta);
 
@@ -172,5 +195,48 @@ public class HospedeService {
                 repository.findByNomeContainingIgnoreCase(nome));
     }
 
+    /**
+     * Autocadastro público de hóspede (endpoint sem JWT).
+     * Sempre atribui Role.HOSPEDE, ignora qualquer role enviada no payload.
+     */
+    @Transactional
+    public HospedeResponseDTO autocadastrar(HospedeSignUpRequestDTO dto) {
+        log.info("Iniciando autocadastro para email: {}", dto.getEmail());
+
+        // Normaliza CPF (remove pontos, traços)
+        String cpfNormalizado = dto.getCpf().replaceAll("\\D", "");
+        log.debug("CPF normalizado: {}", cpfNormalizado);
+
+        // Verifica duplicidade de CPF
+        if (repository.existsByCpf(cpfNormalizado)) {
+            log.warn("Tentativa de cadastro com CPF já existente: {}", cpfNormalizado);
+            throw new CpfJaExisteException();
+        }
+
+        // Verifica duplicidade de email
+        if (repository.existsByEmail(dto.getEmail())) {
+            log.warn("Tentativa de cadastro com email já existente: {}", dto.getEmail());
+            throw new EmailJaExisteException();
+        }
+
+        // Cria entidade
+        HospedeEntity entity = new HospedeEntity();
+        entity.setNome(dto.getNome());
+        entity.setEmail(dto.getEmail());
+        entity.setTelefone(dto.getTelefone());
+        entity.setCpf(cpfNormalizado);
+        entity.setDataNascimento(dto.getDataNascimento());
+
+        // Criptografa senha
+        entity.setSenha(passwordEncoder.encode(dto.getSenha()));
+
+        // Define role padrão (ignora qualquer role enviada)
+        entity.setRole(Role.HOSPEDE);
+
+        HospedeEntity salvo = repository.save(entity);
+        log.info("Hóspede cadastrado com sucesso - ID: {}, Nome: {}", salvo.getId(), salvo.getNome());
+
+        return mapper.paraHospedeResponseDTO(salvo);
+    }
 
 }
