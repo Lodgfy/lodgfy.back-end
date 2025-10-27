@@ -26,6 +26,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        // Lista de endpoints públicos que não devem passar pelo filtro JWT
+        return path.startsWith("/auth/") ||
+               path.equals("/api/hospedes/registrar") ||
+               path.startsWith("/swagger-ui") ||
+               path.startsWith("/v3/api-docs") ||
+               path.equals("/swagger-ui.html") ||
+               (path.startsWith("/api/chales") && "GET".equals(request.getMethod()));
+    }
+
+    @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
@@ -70,4 +83,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-
