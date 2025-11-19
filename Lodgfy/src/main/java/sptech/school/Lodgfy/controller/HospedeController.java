@@ -103,6 +103,7 @@ public class HospedeController {
             LoginResponseDTO response = service.login(loginRequest);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            // Retorna 401 com mensagem de erro
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }

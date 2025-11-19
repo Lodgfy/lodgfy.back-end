@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/api/hospedes/registrar").permitAll()
                 .requestMatchers("/api/hospedes/login").permitAll()
+                .requestMatchers("/api/orcamentos/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
 
