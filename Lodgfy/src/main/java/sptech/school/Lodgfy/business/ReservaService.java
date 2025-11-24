@@ -1,7 +1,9 @@
 package sptech.school.Lodgfy.business;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import sptech.school.Lodgfy.business.dto.ReservaRequestDTO;
 import sptech.school.Lodgfy.business.dto.ReservaResponseDTO;
 import sptech.school.Lodgfy.business.dto.StatusReserva;
@@ -22,215 +24,197 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReservaService {
 
     private final ReservaRepository reservaRepository;
-    private final ChaleRepository chaleRepository;
     private final HospedeRepository hospedeRepository;
+    private final ChaleRepository chaleRepository;
     private final ReservaMapper mapper;
 
+    @Transactional
     public ReservaResponseDTO criarReserva(ReservaRequestDTO request) {
-        // Validar datas
+        log.info("Criando reserva - Hóspede: {}, Chalé: {}, Check-in: {}, Check-out: {}",
+                request.getHospedeId(), request.getChaleId(), request.getDataCheckIn(), request.getDataCheckOut());
+
+        // Validações de data
         validarDatas(request.getDataCheckIn(), request.getDataCheckOut());
 
-        // Verificar se hóspede existe
+        // Buscar hóspede
         HospedeEntity hospede = hospedeRepository.findById(request.getHospedeId())
-                .orElseThrow(() -> new HospedeNaoEncontradoException(
-                        "Hóspede com ID " + request.getHospedeId() + " não encontrado"));
+                .orElseThrow(() -> {
+                    log.error("Hóspede não encontrado: {}", request.getHospedeId());
+                    return new RuntimeException("Hóspede não encontrado");
+                });
 
-        // Verificar se chalé existe
+        // Buscar chalé
         ChaleEntity chale = chaleRepository.findById(request.getChaleId())
-                .orElseThrow(() -> new RuntimeException(
-                        "Chalé com ID " + request.getChaleId() + " não encontrado"));
+                .orElseThrow(() -> {
+                    log.error("Chalé não encontrado: {}", request.getChaleId());
+                    return new RuntimeException("Chalé não encontrado");
+                });
 
-        // Verificar se chalé está disponível
+        // Validar disponibilidade do chalé
         if (!chale.getDisponivel()) {
-            throw new ChaleIndisponivelException(
-                    "Chalé " + chale.getNome() + " não está disponível para reserva");
+            log.warn("Chalé indisponível: {}", chale.getIdChale());
+            throw new ChaleIndisponivelException();
         }
 
         // Verificar conflitos de reserva
-        if (reservaRepository.existeConflitoReserva(
-                request.getChaleId(),
+        List<ReservaEntity> reservasConflitantes = reservaRepository.findReservasConflitantes(
+                chale.getIdChale(),
                 request.getDataCheckIn(),
-                request.getDataCheckOut(),
-                null)) {
-            throw new ReservaConflitanteException(
-                    "Já existe uma reserva para este chalé no período solicitado");
-        }
+                request.getDataCheckOut()
+        );
 
-        // Criar reserva
-        ReservaEntity reserva = mapper.paraReservaEntity(request);
-        reserva.setHospede(hospede);
-        reserva.setChale(chale);
-
-        // Definir status padrão se não informado
-        if (reserva.getStatusReserva() == null) {
-            reserva.setStatusReserva(StatusReserva.PENDENTE);
+        if (!reservasConflitantes.isEmpty()) {
+            log.warn("Reserva conflitante encontrada para chalé: {}", chale.getIdChale());
+            throw new ReservaConflitanteException();
         }
 
         // Calcular valor total
         BigDecimal valorTotal = calcularValorTotal(
                 chale.getValorDiaria(),
                 request.getDataCheckIn(),
-                request.getDataCheckOut());
+                request.getDataCheckOut()
+        );
+
+        // Criar reserva
+        ReservaEntity reserva = new ReservaEntity();
+        reserva.setHospede(hospede);
+        reserva.setChale(chale);
+        reserva.setDataCheckIn(request.getDataCheckIn());
+        reserva.setDataCheckOut(request.getDataCheckOut());
         reserva.setValorTotal(valorTotal);
+        reserva.setStatusReserva(StatusReserva.PENDENTE);
 
         ReservaEntity reservaSalva = reservaRepository.save(reserva);
+        log.info("Reserva criada com sucesso - ID: {}, Valor: {}", reservaSalva.getIdReserva(), valorTotal);
 
         return mapper.paraReservaResponseDTO(reservaSalva);
     }
 
     public List<ReservaResponseDTO> listarReservas() {
+        log.info("Listando todas as reservas");
         return mapper.paraListaReservaResponseDTO(reservaRepository.findAll());
     }
 
     public Optional<ReservaResponseDTO> buscarPorId(Long id) {
+        log.info("Buscando reserva por ID: {}", id);
         return reservaRepository.findById(id)
                 .map(mapper::paraReservaResponseDTO);
     }
 
-    public Optional<ReservaResponseDTO> atualizarReserva(Long id, ReservaRequestDTO request) {
-        return reservaRepository.findById(id)
-                .map(reserva -> {
-                    // Não permitir atualizar reserva cancelada ou concluída
-                    if (reserva.getStatusReserva() == StatusReserva.CANCELADA ||
-                        reserva.getStatusReserva() == StatusReserva.CONCLUIDA) {
-                        throw new IllegalArgumentException(
-                                "Não é possível atualizar uma reserva " +
-                                reserva.getStatusReserva().toString().toLowerCase());
-                    }
-
-                    // Validar novas datas
-                    validarDatas(request.getDataCheckIn(), request.getDataCheckOut());
-
-                    // Se mudou o chalé, verificar se existe e está disponível
-                    if (!reserva.getChale().getIdChale().equals(request.getChaleId())) {
-                        ChaleEntity novoChale = chaleRepository.findById(request.getChaleId())
-                                .orElseThrow(() -> new RuntimeException(
-                                        "Chalé com ID " + request.getChaleId() + " não encontrado"));
-
-                        if (!novoChale.getDisponivel()) {
-                            throw new ChaleIndisponivelException(
-                                    "Chalé " + novoChale.getNome() + " não está disponível");
-                        }
-
-                        reserva.setChale(novoChale);
-                    }
-
-                    // Se mudou o hóspede, verificar se existe
-                    if (!reserva.getHospede().getId().equals(request.getHospedeId())) {
-                        HospedeEntity novoHospede = hospedeRepository.findById(request.getHospedeId())
-                                .orElseThrow(() -> new HospedeNaoEncontradoException(
-                                        "Hóspede com ID " + request.getHospedeId() + " não encontrado"));
-
-                        reserva.setHospede(novoHospede);
-                    }
-
-                    // Verificar conflitos (excluindo a própria reserva)
-                    if (reservaRepository.existeConflitoReserva(
-                            request.getChaleId(),
-                            request.getDataCheckIn(),
-                            request.getDataCheckOut(),
-                            id)) {
-                        throw new ReservaConflitanteException(
-                                "Já existe uma reserva para este chalé no período solicitado");
-                    }
-
-                    // Atualizar campos
-                    reserva.setDataCheckIn(request.getDataCheckIn());
-                    reserva.setDataCheckOut(request.getDataCheckOut());
-
-                    if (request.getStatusReserva() != null) {
-                        reserva.setStatusReserva(request.getStatusReserva());
-                    }
-
-                    // Recalcular valor total
-                    BigDecimal valorTotal = calcularValorTotal(
-                            reserva.getChale().getValorDiaria(),
-                            request.getDataCheckIn(),
-                            request.getDataCheckOut());
-                    reserva.setValorTotal(valorTotal);
-
-                    ReservaEntity reservaSalva = reservaRepository.save(reserva);
-
-                    return mapper.paraReservaResponseDTO(reservaSalva);
-                });
+    public List<ReservaResponseDTO> buscarPorHospede(Long hospedeId) {
+        log.info("Buscando reservas do hóspede: {}", hospedeId);
+        return mapper.paraListaReservaResponseDTO(
+                reservaRepository.findHistoricoByHospede(hospedeId)
+        );
     }
 
-    public void cancelarReserva(Long id) {
-        ReservaEntity reserva = reservaRepository.findById(id)
-                .orElseThrow(() -> new ReservaNaoEncontradaException(
-                        "Reserva com ID " + id + " não encontrada"));
+    public List<ReservaResponseDTO> buscarPorChale(Long chaleId) {
+        log.info("Buscando reservas do chalé: {}", chaleId);
+        return mapper.paraListaReservaResponseDTO(
+                reservaRepository.findByChaleIdChale(chaleId)
+        );
+    }
 
-        if (reserva.getStatusReserva() == StatusReserva.CONCLUIDA) {
-            throw new IllegalArgumentException("Não é possível cancelar uma reserva já concluída");
+    public List<ReservaResponseDTO> buscarPorStatus(StatusReserva status) {
+        log.info("Buscando reservas com status: {}", status);
+        return mapper.paraListaReservaResponseDTO(
+                reservaRepository.findByStatusReserva(status)
+        );
+    }
+
+    @Transactional
+    public ReservaResponseDTO confirmarReserva(Long id) {
+        log.info("Confirmando reserva: {}", id);
+        ReservaEntity reserva = reservaRepository.findById(id)
+                .orElseThrow(ReservaNaoEncontradaException::new);
+
+        if (reserva.getStatusReserva() != StatusReserva.PENDENTE) {
+            log.warn("Tentativa de confirmar reserva que não está pendente: {}", id);
+            throw new IllegalStateException("Apenas reservas pendentes podem ser confirmadas");
         }
 
+        reserva.setStatusReserva(StatusReserva.CONFIRMADA);
+        ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
+        log.info("Reserva confirmada: {}", id);
+
+        return mapper.paraReservaResponseDTO(reservaAtualizada);
+    }
+
+    @Transactional
+    public ReservaResponseDTO cancelarReserva(Long id) {
+        log.info("Cancelando reserva: {}", id);
+        ReservaEntity reserva = reservaRepository.findById(id)
+                .orElseThrow(ReservaNaoEncontradaException::new);
+
         if (reserva.getStatusReserva() == StatusReserva.CANCELADA) {
-            throw new IllegalArgumentException("Esta reserva já está cancelada");
+            log.warn("Tentativa de cancelar reserva já cancelada: {}", id);
+            throw new IllegalStateException("Reserva já está cancelada");
+        }
+
+        if (reserva.getStatusReserva() == StatusReserva.CONCLUIDA) {
+            log.warn("Tentativa de cancelar reserva já concluída: {}", id);
+            throw new IllegalStateException("Não é possível cancelar reserva já concluída");
         }
 
         reserva.setStatusReserva(StatusReserva.CANCELADA);
-        reservaRepository.save(reserva);
+        ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
+        log.info("Reserva cancelada: {}", id);
+
+        return mapper.paraReservaResponseDTO(reservaAtualizada);
     }
 
-    public List<ReservaResponseDTO> listarReservasPorHospede(Long hospedeId) {
-        if (!hospedeRepository.existsById(hospedeId)) {
-            throw new HospedeNaoEncontradoException(
-                    "Hóspede com ID " + hospedeId + " não encontrado");
+    @Transactional
+    public ReservaResponseDTO concluirReserva(Long id) {
+        log.info("Concluindo reserva: {}", id);
+        ReservaEntity reserva = reservaRepository.findById(id)
+                .orElseThrow(ReservaNaoEncontradaException::new);
+
+        if (reserva.getStatusReserva() != StatusReserva.CONFIRMADA) {
+            log.warn("Tentativa de concluir reserva que não está confirmada: {}", id);
+            throw new IllegalStateException("Apenas reservas confirmadas podem ser concluídas");
         }
 
-        return mapper.paraListaReservaResponseDTO(
-                reservaRepository.findByHospedeId(hospedeId));
+        reserva.setStatusReserva(StatusReserva.CONCLUIDA);
+        ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
+        log.info("Reserva concluída: {}", id);
+
+        return mapper.paraReservaResponseDTO(reservaAtualizada);
     }
 
-    public List<ReservaResponseDTO> listarReservasPorChale(Long chaleId) {
-        if (!chaleRepository.existsById(chaleId)) {
-            throw new RuntimeException("Chalé com ID " + chaleId + " não encontrado");
+    @Transactional
+    public void deletarReserva(Long id) {
+        log.info("Deletando reserva: {}", id);
+        if (!reservaRepository.existsById(id)) {
+            log.error("Tentativa de deletar reserva inexistente: {}", id);
+            throw new ReservaNaoEncontradaException();
         }
-
-        return mapper.paraListaReservaResponseDTO(
-                reservaRepository.findByChaleIdChale(chaleId));
+        reservaRepository.deleteById(id);
+        log.info("Reserva deletada: {}", id);
     }
 
-    public List<ReservaResponseDTO> listarReservasPorStatus(StatusReserva status) {
-        return mapper.paraListaReservaResponseDTO(
-                reservaRepository.findByStatusReserva(status));
-    }
-
-    // Métodos auxiliares privados
+    // ======================== MÉTODOS AUXILIARES ========================
 
     private void validarDatas(LocalDate checkIn, LocalDate checkOut) {
-        LocalDate hoje = LocalDate.now();
-
-        if (checkIn == null || checkOut == null) {
-            throw new DataReservaInvalidaException("As datas de check-in e check-out são obrigatórias");
+        if (checkIn.isAfter(checkOut)) {
+            throw new DataReservaInvalidaException("Data de check-in não pode ser posterior à data de check-out");
         }
 
-        if (checkIn.isBefore(hoje)) {
-            throw new DataReservaInvalidaException("A data de check-in não pode ser anterior à data atual");
+        if (checkIn.isEqual(checkOut)) {
+            throw new DataReservaInvalidaException("Data de check-in não pode ser igual à data de check-out");
         }
 
-        if (checkOut.isBefore(checkIn) || checkOut.isEqual(checkIn)) {
-            throw new DataReservaInvalidaException(
-                    "A data de check-out deve ser posterior à data de check-in");
-        }
-
-        long dias = ChronoUnit.DAYS.between(checkIn, checkOut);
-        if (dias > 365) {
-            throw new DataReservaInvalidaException(
-                    "O período de reserva não pode exceder 365 dias");
+        if (checkIn.isBefore(LocalDate.now())) {
+            throw new DataReservaInvalidaException("Data de check-in não pode ser anterior à data atual");
         }
     }
 
     private BigDecimal calcularValorTotal(BigDecimal valorDiaria, LocalDate checkIn, LocalDate checkOut) {
-        if (valorDiaria == null) {
-            valorDiaria = BigDecimal.ZERO;
-        }
-
-        long numeroDias = ChronoUnit.DAYS.between(checkIn, checkOut);
-        return valorDiaria.multiply(BigDecimal.valueOf(numeroDias));
+        long numeroDiarias = ChronoUnit.DAYS.between(checkIn, checkOut);
+        return valorDiaria.multiply(BigDecimal.valueOf(numeroDiarias));
     }
 }
 
