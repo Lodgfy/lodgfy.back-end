@@ -1,21 +1,23 @@
 package sptech.school.Lodgfy.business.dto;
 
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.br.CPF;
-import sptech.school.Lodgfy.security.enums.Role;
+
 import java.time.LocalDate;
 
+/**
+ * DTO para autocadastro de hóspedes (endpoint público).
+ * Não aceita role - sempre será HOSPEDE.
+ */
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class HospedeRequestDTO {
+public class HospedeSignUpRequestDTO {
 
     @Schema(example = "João da Silva", description = "Nome completo do hóspede")
     @NotBlank(message = "Nome é obrigatório")
@@ -37,7 +39,7 @@ public class HospedeRequestDTO {
     )
     private String telefone;
 
-    @Schema(example = "Senha@123", description = "Senha do hóspede")
+    @Schema(example = "Senha@123", description = "Senha do hóspede (mínimo 8 caracteres, letra, número e especial)")
     @NotBlank(message = "Senha é obrigatória")
     @Size(min = 8, max = 60, message = "Senha deve ter entre 8 e 60 caracteres")
     @Pattern(
@@ -52,34 +54,7 @@ public class HospedeRequestDTO {
     private LocalDate dataNascimento;
 
     @Schema(example = "123.456.789-00", description = "CPF do hóspede")
-    @Pattern(
-            regexp = "\\d{11}|\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}",
-            message = "CPF deve estar no formato 123.456.789-00 ou 12345678900"
-    )
     @NotBlank(message = "CPF é obrigatório")
     private String cpf;
-
-    @Schema(example = "HOSPEDE", description = "Tipo de usuário (sempre HOSPEDE no cadastro público)")
-    private Role role;
-
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-
-    public String getTelefone() { return telefone; }
-    public void setTelefone(String telefone) { this.telefone = telefone; }
-
-    public String getSenha() { return senha; }
-    public void setSenha(String senha) { this.senha = senha; }
-
-    public LocalDate getDataNascimento() { return dataNascimento; }
-    public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
-
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
-
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
 }
+
