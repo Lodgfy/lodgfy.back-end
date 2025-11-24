@@ -1,5 +1,6 @@
 package sptech.school.Lodgfy.security.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -39,18 +40,35 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
 
-                // Chalés: consultas públicas, modificações autenticadas
-                .requestMatchers("/api/chales").permitAll()
-                .requestMatchers("/api/chales/{id}").permitAll()
-                .requestMatchers("/api/chales/preco-maximo").permitAll()
-                .requestMatchers("/api/chales/buscar").permitAll()
-                .requestMatchers("/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
+                // Chalés: apenas GET é público, PUT/PATCH/DELETE requerem autenticação
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chales/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
+
+                // Reservas: operações requerem autenticação
+                .requestMatchers("/api/reservas/**").hasAnyRole("HOSPEDE", "ADMIN")
 
                 // Autenticados
                 .requestMatchers("/api/hospedes/**").hasAnyRole("HOSPEDE", "ADMIN")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                // Quando não autenticado, retornar 403 (Forbidden)
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Acesso negado. Token não fornecido ou inválido.\"}");
+                })
+                // Quando autenticado, mas sem permissão, retornar 403
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Acesso negado. Permissão insuficiente.\"}");
+                })
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
