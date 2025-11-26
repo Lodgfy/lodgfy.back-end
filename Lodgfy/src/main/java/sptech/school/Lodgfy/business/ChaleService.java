@@ -2,9 +2,11 @@ package sptech.school.Lodgfy.business;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import sptech.school.Lodgfy.business.dto.ChaleDisponibilidadeRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleResponseDTO;
 import sptech.school.Lodgfy.business.exceptions.ChaleJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.DataReservaInvalidaException;
 import sptech.school.Lodgfy.business.mapsstruct.ChaleMapper;
 import sptech.school.Lodgfy.business.observer.ChaleManager;
 import sptech.school.Lodgfy.business.observer.ChaleObserver;
@@ -104,6 +106,21 @@ public class ChaleService {
     public List<ChaleResponseDTO> buscarPorNomeOuNumero(String nome, String numero) {
         return mapper.paraListaChaleResponseDTO(
                 repository.findByNomeContainsIgnoreCaseOrNumeroContainsIgnoreCase(nome, numero));
+    }
+
+    public List<ChaleResponseDTO> buscarChalesDisponiveis(ChaleDisponibilidadeRequestDTO request) {
+        // Validar que check-out é depois de check-in
+        if (!request.getDataCheckOut().isAfter(request.getDataCheckIn())) {
+            throw new DataReservaInvalidaException("Data de check-out deve ser posterior à data de check-in");
+        }
+
+        List<ChaleEntity> chalesDisponiveis = repository.buscarChalesDisponiveis(
+                request.getQuantidadePessoas(),
+                request.getDataCheckIn(),
+                request.getDataCheckOut()
+        );
+
+        return mapper.paraListaChaleResponseDTO(chalesDisponiveis);
     }
 
 
