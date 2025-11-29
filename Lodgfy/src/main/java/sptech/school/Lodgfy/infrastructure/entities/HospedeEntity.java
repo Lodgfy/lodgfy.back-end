@@ -29,10 +29,12 @@ public class HospedeEntity {
 
     @Schema(example = "João da Silva", description = "Nome completo do hóspede")
     @Column(nullable = false, length = 100)
+    @Size(max = 50, message = "Nome deve ter no máximo 50 caracteres")
     private String nome;
 
     @Schema(example = "joao.silva@email.com", description = "Email do hóspede")
     @Column(nullable = false, unique = true, length = 255)
+    @Size(max = 80, message = "Email deve ter no máximo 80 caracteres")
     private String email;
 
     @Schema(example = "(11) 98765-4321", description = "Telefone do hóspede")

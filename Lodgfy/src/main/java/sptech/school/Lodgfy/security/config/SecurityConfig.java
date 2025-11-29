@@ -42,7 +42,9 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui.html").permitAll()
 
                 // Chalés: apenas GET é público, PUT/PATCH/DELETE requerem autenticação
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chales/disponiveis").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chales/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/chales/").hasAnyRole("HOSPEDE", "ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/chales/**").hasAnyRole("HOSPEDE", "ADMIN")

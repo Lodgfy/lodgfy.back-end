@@ -30,15 +30,12 @@ public class ChaleResponseDTO {
     @Schema(example = "350.00", description = "Valor da diária")
     private BigDecimal valorDiaria;
 
-    @Schema(example = "true", description = "Indica se o chalé está disponível")
-    private Boolean disponivel;
-
     @Schema(example = "4", description = "Capacidade de pessoas")
     private Integer capacidade;
 
     @Schema(example = "Chalé luxuoso com vista para as montanhas", description = "Descrição do chalé")
     private String descricao;
 
-    @Schema(example = "DISPONIVEL", description = "Status do chalé")
+    @Schema(example = "DISPONIVEL", description = "Status do chalé (DISPONIVEL, OCUPADO, LIMPEZA)")
     private StatusChale status;
 }
