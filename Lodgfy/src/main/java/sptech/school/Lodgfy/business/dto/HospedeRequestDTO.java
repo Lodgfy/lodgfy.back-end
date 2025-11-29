@@ -19,14 +19,14 @@ public class HospedeRequestDTO {
 
     @Schema(example = "João da Silva", description = "Nome completo do hóspede")
     @NotBlank(message = "Nome é obrigatório")
-    @Size(min = 3, max = 100, message = "Nome deve ter entre 3 e 100 caracteres")
+    @Size(min = 3, max = 50, message = "Nome deve ter entre 3 e 50 caracteres")
     @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s]*$", message = "Nome deve conter apenas letras")
     private String nome;
 
     @Schema(example = "joao.silva@email.com", description = "Email do hóspede")
     @Email(message = "Email inválido")
     @NotBlank(message = "Email é obrigatório")
-    @Size(max = 255, message = "Email deve ter no máximo 255 caracteres")
+    @Size(max = 80, message = "Email deve ter no máximo 80 caracteres")
     private String email;
 
     @Schema(example = "(11) 98765-4321", description = "Telefone do hóspede")

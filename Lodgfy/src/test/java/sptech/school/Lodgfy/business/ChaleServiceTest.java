@@ -54,7 +54,6 @@ public class ChaleServiceTest {
         chaleMock.setNumero("A101");
         chaleMock.setTipo("Luxo");
         chaleMock.setValorDiaria(BigDecimal.valueOf(350.00));
-        chaleMock.setDisponivel(true);
         chaleMock.setCapacidade(4);
         chaleMock.setDescricao("Chalé luxuoso com vista para as montanhas");
         chaleMock.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
@@ -65,7 +64,6 @@ public class ChaleServiceTest {
         requestDTO.setNumero("A101");
         requestDTO.setTipo("Luxo");
         requestDTO.setValorDiaria(BigDecimal.valueOf(350.00));
-        requestDTO.setDisponivel(true);
         requestDTO.setCapacidade(4);
         requestDTO.setDescricao("Chalé luxuoso com vista para as montanhas");
         requestDTO.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
@@ -77,7 +75,6 @@ public class ChaleServiceTest {
         responseDTO.setNumero("A101");
         responseDTO.setTipo("Luxo");
         responseDTO.setValorDiaria(BigDecimal.valueOf(350.00));
-        responseDTO.setDisponivel(true);
         responseDTO.setCapacidade(4);
         responseDTO.setDescricao("Chalé luxuoso com vista para as montanhas");
         responseDTO.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
@@ -343,7 +340,6 @@ public class ChaleServiceTest {
         requestAtualizado.setNumero("B202"); // Número diferente
         requestAtualizado.setTipo("Luxo");
         requestAtualizado.setValorDiaria(BigDecimal.valueOf(350.00));
-        requestAtualizado.setDisponivel(true);
         requestAtualizado.setCapacidade(4);
         requestAtualizado.setDescricao("Descrição");
         requestAtualizado.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
@@ -503,7 +499,6 @@ public class ChaleServiceTest {
         chaleAtualizado.setNumero("A101");
         chaleAtualizado.setTipo("Luxo");
         chaleAtualizado.setValorDiaria(BigDecimal.valueOf(350.00));
-        chaleAtualizado.setDisponivel(true);
         chaleAtualizado.setCapacidade(4);
         chaleAtualizado.setDescricao("Chalé luxuoso com vista para as montanhas");
         chaleAtualizado.setStatus(ChaleEntity.StatusChale.MANUTENCAO);
@@ -532,82 +527,15 @@ public class ChaleServiceTest {
         // Arrange
         ChaleEntity chaleAtualizado = new ChaleEntity();
         chaleAtualizado.setIdChale(1L);
-        chaleAtualizado.setStatus(ChaleEntity.StatusChale.MANUTENCAO);
+        chaleAtualizado.setStatus(ChaleEntity.StatusChale.OCUPADO);
 
         when(repository.findById(1L)).thenReturn(Optional.of(chaleMock));
         when(repository.save(any(ChaleEntity.class))).thenReturn(chaleAtualizado);
 
         // Act
-        service.atualizarStatus(1L, ChaleEntity.StatusChale.MANUTENCAO);
+        service.atualizarStatus(1L, ChaleEntity.StatusChale.OCUPADO);
 
         // Assert
         verify(chaleManager, times(1)).notificar(chaleAtualizado, ChaleObserver.ChaleEventType.STATUS_ALTERADO);
-    }
-
-    // ======================== TESTES: atualizarDisponibilidade() ========================
-
-    @Test
-    @DisplayName("Deve retornar Optional vazio quando chalé não existe (atualizarDisponibilidade)")
-    void testAtualizarDisponibilidadeNaoExistente() {
-        // Arrange
-        when(repository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act
-        Optional<ChaleResponseDTO> resultado = service.atualizarDisponibilidade(999L, false);
-
-        // Assert
-        assertFalse(resultado.isPresent());
-        verify(repository, times(1)).findById(999L);
-    }
-
-    @Test
-    @DisplayName("Deve atualizar disponibilidade com sucesso")
-    void testAtualizarDisponibilidadeComSucesso() {
-        // Arrange
-        ChaleEntity chaleAtualizado = new ChaleEntity();
-        chaleAtualizado.setIdChale(1L);
-        chaleAtualizado.setNome("Chalé das Montanhas");
-        chaleAtualizado.setNumero("A101");
-        chaleAtualizado.setTipo("Luxo");
-        chaleAtualizado.setValorDiaria(BigDecimal.valueOf(350.00));
-        chaleAtualizado.setDisponivel(false);
-        chaleAtualizado.setCapacidade(4);
-        chaleAtualizado.setDescricao("Chalé luxuoso com vista para as montanhas");
-        chaleAtualizado.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
-
-        ChaleResponseDTO responseAtualizado = new ChaleResponseDTO();
-        responseAtualizado.setIdChale(1L);
-        responseAtualizado.setDisponivel(false);
-
-        when(repository.findById(1L)).thenReturn(Optional.of(chaleMock));
-        when(repository.save(any(ChaleEntity.class))).thenReturn(chaleAtualizado);
-        when(mapper.paraChaleResponseDTO(chaleAtualizado)).thenReturn(responseAtualizado);
-
-        // Act
-        Optional<ChaleResponseDTO> resultado = service.atualizarDisponibilidade(1L, false);
-
-        // Assert
-        assertTrue(resultado.isPresent());
-        assertEquals(false, resultado.get().getDisponivel());
-        verify(repository, times(1)).findById(1L);
-        verify(repository, times(1)).save(any(ChaleEntity.class));
-    }
-
-    @Test
-    @DisplayName("Deve notificar com evento DISPONIBILIDADE_ALTERADA ao atualizar disponibilidade")
-    void testAtualizarDisponibilidadeNotificaObservers() {
-        // Arrange
-        ChaleEntity chaleAtualizado = new ChaleEntity();
-        chaleAtualizado.setIdChale(1L);
-        chaleAtualizado.setDisponivel(false);
-
-        when(repository.findById(1L)).thenReturn(Optional.of(chaleMock));
-        when(repository.save(any(ChaleEntity.class))).thenReturn(chaleAtualizado);
-
-        // Act
-        service.atualizarDisponibilidade(1L, false);
-
-        // Assert
-        verify(chaleManager, times(1)).notificar(chaleAtualizado, ChaleObserver.ChaleEventType.DISPONIBILIDADE_ALTERADA);
     }
 }

@@ -20,7 +20,6 @@ public class LogChaleObserver implements ChaleObserver {
         log.info("Nome: {}", chale.getNome());
         log.info("Número: {}", chale.getNumero());
         log.info("Status: {}", chale.getStatus());
-        log.info("Disponível: {}", chale.getDisponivel());
         log.info("Valor Diária: {}", chale.getValorDiaria());
         log.info("=====================================");
     }

@@ -55,8 +55,8 @@ public class ReservaService {
                 });
 
         // Validar disponibilidade do chalé
-        if (!chale.getDisponivel()) {
-            log.warn("Chalé indisponível: {}", chale.getIdChale());
+        if (chale.getStatus() != ChaleEntity.StatusChale.DISPONIVEL) {
+            log.warn("Chalé indisponível: {} - Status: {}", chale.getIdChale(), chale.getStatus());
             throw new ChaleIndisponivelException();
         }
 
@@ -138,8 +138,14 @@ public class ReservaService {
         }
 
         reserva.setStatusReserva(StatusReserva.CONFIRMADA);
+
+        // Atualizar status do chalé para OCUPADO
+        ChaleEntity chale = reserva.getChale();
+        chale.setStatus(ChaleEntity.StatusChale.OCUPADO);
+        chaleRepository.save(chale);
+
         ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
-        log.info("Reserva confirmada: {}", id);
+        log.info("Reserva confirmada e chalé marcado como OCUPADO: {}", id);
 
         return mapper.paraReservaResponseDTO(reservaAtualizada);
     }
@@ -161,6 +167,14 @@ public class ReservaService {
         }
 
         reserva.setStatusReserva(StatusReserva.CANCELADA);
+
+        // Se a reserva estava confirmada, liberar o chalé
+        if (reserva.getStatusReserva() == StatusReserva.CONFIRMADA) {
+            ChaleEntity chale = reserva.getChale();
+            chale.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
+            chaleRepository.save(chale);
+        }
+
         ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
         log.info("Reserva cancelada: {}", id);
 
@@ -179,8 +193,14 @@ public class ReservaService {
         }
 
         reserva.setStatusReserva(StatusReserva.CONCLUIDA);
+
+        // Atualizar status do chalé para LIMPEZA
+        ChaleEntity chale = reserva.getChale();
+        chale.setStatus(ChaleEntity.StatusChale.LIMPEZA);
+        chaleRepository.save(chale);
+
         ReservaEntity reservaAtualizada = reservaRepository.save(reserva);
-        log.info("Reserva concluída: {}", id);
+        log.info("Reserva concluída e chalé marcado como LIMPEZA: {}", id);
 
         return mapper.paraReservaResponseDTO(reservaAtualizada);
     }
@@ -217,4 +237,3 @@ public class ReservaService {
         return valorDiaria.multiply(BigDecimal.valueOf(numeroDiarias));
     }
 }
-

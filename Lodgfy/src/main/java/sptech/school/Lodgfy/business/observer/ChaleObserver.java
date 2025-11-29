@@ -8,11 +8,9 @@ public interface ChaleObserver {
 
     enum ChaleEventType {
         STATUS_ALTERADO,
-        DISPONIBILIDADE_ALTERADA,
         PRECO_ALTERADO,
         CRIADO,
         ATUALIZADO,
         REMOVIDO
     }
 }
-
