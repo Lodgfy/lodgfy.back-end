@@ -68,7 +68,7 @@ public class ReservaServiceTest {
         chaleMock.setNome("Chalé das Montanhas");
         chaleMock.setNumero("A101");
         chaleMock.setValorDiaria(BigDecimal.valueOf(350.00));
-        chaleMock.setDisponivel(true);
+        chaleMock.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
 
         // Inicializar ReservaEntity
         reservaMock = new ReservaEntity();
@@ -153,7 +153,7 @@ public class ReservaServiceTest {
     @DisplayName("Deve lançar ChaleIndisponivelException quando chalé não está disponível")
     void testCriarReservaComChaleIndisponivel() {
         // Arrange
-        chaleMock.setDisponivel(false);
+        chaleMock.setStatus(ChaleEntity.StatusChale.OCUPADO);
         when(hospedeRepository.findById(1L)).thenReturn(Optional.of(hospedeMock));
         when(chaleRepository.findById(1L)).thenReturn(Optional.of(chaleMock));
 

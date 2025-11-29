@@ -20,7 +20,7 @@ public interface ChaleRepository extends JpaRepository<ChaleEntity, Long> {
     boolean existsByNumero(String numero);
 
     @Query("SELECT c FROM ChaleEntity c WHERE c.capacidade >= :quantidadePessoas " +
-           "AND c.status NOT IN ('MANUTENCAO', 'OCUPADO') " +
+           "AND c.status = 'DISPONIVEL' " +
            "AND c.idChale NOT IN (" +
            "  SELECT r.chale.idChale FROM ReservaEntity r " +
            "  WHERE r.statusReserva IN ('CONFIRMADA', 'PENDENTE') " +

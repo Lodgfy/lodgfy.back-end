@@ -19,9 +19,6 @@ public class NotificacaoChaleObserver implements ChaleObserver {
             case STATUS_ALTERADO:
                 notificarMudancaStatus(chale);
                 break;
-            case DISPONIBILIDADE_ALTERADA:
-                notificarMudancaDisponibilidade(chale);
-                break;
             case PRECO_ALTERADO:
                 notificarMudancaPreco(chale);
                 break;
@@ -41,12 +38,6 @@ public class NotificacaoChaleObserver implements ChaleObserver {
         log.info("📧 Enviando notificação: Status do chalé '{}' alterado para {}",
                 chale.getNome(), chale.getStatus());
         // Implementar lógica de envio de notificação (email, SMS, etc)
-    }
-
-    private void notificarMudancaDisponibilidade(ChaleEntity chale) {
-        log.info("📧 Enviando notificação: Disponibilidade do chalé '{}' alterada para {}",
-                chale.getNome(), chale.getDisponivel() ? "DISPONÍVEL" : "INDISPONÍVEL");
-        // Implementar lógica de envio de notificação
     }
 
     private void notificarMudancaPreco(ChaleEntity chale) {

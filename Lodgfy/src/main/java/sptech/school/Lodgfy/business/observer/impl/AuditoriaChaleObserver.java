@@ -61,12 +61,6 @@ public class AuditoriaChaleObserver implements ChaleObserver {
                 timestamp, chale.getIdChale(), chale.getNome(), chale.getStatus()
             );
 
-            case DISPONIBILIDADE_ALTERADA -> String.format(
-                "[%s] Disponibilidade alterada - Chalé ID: %d ('%s') -> %s",
-                timestamp, chale.getIdChale(), chale.getNome(),
-                chale.getDisponivel() ? "DISPONÍVEL" : "INDISPONÍVEL"
-            );
-
             case PRECO_ALTERADO -> String.format(
                 "[%s] Preço alterado - Chalé ID: %d ('%s') -> Novo valor: R$ %s",
                 timestamp, chale.getIdChale(), chale.getNome(), chale.getValorDiaria()

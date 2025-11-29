@@ -81,7 +81,6 @@ public class ChaleService {
                     chale.setNumero(chaleAtualizado.getNumero());
                     chale.setTipo(chaleAtualizado.getTipo());
                     chale.setValorDiaria(chaleAtualizado.getValorDiaria());
-                    chale.setDisponivel(chaleAtualizado.getDisponivel());
                     chale.setCapacidade(chaleAtualizado.getCapacidade());
                     chale.setDescricao(chaleAtualizado.getDescricao());
                     chale.setStatus(chaleAtualizado.getStatus());
@@ -137,25 +136,10 @@ public class ChaleService {
                 });
     }
 
-    public Optional<ChaleResponseDTO> atualizarDisponibilidade(Long id, Boolean disponivel) {
-        return repository.findById(id)
-                .map(chale -> {
-                    chale.setDisponivel(disponivel);
-                    ChaleEntity chaleSalvo = repository.save(chale);
-
-                    chaleManager.notificar(chaleSalvo, ChaleObserver.ChaleEventType.DISPONIBILIDADE_ALTERADA);
-
-                    return mapper.paraChaleResponseDTO(chaleSalvo);
-                });
-    }
-
 
     private ChaleObserver.ChaleEventType detectarTipoMudanca(ChaleEntity anterior, ChaleEntity atual) {
         if (!anterior.getStatus().equals(atual.getStatus())) {
             return ChaleObserver.ChaleEventType.STATUS_ALTERADO;
-        }
-        if (!anterior.getDisponivel().equals(atual.getDisponivel())) {
-            return ChaleObserver.ChaleEventType.DISPONIBILIDADE_ALTERADA;
         }
         if (anterior.getValorDiaria() != null &&
             !anterior.getValorDiaria().equals(atual.getValorDiaria())) {
@@ -174,7 +158,6 @@ public class ChaleService {
         copia.setNumero(chale.getNumero());
         copia.setTipo(chale.getTipo());
         copia.setValorDiaria(chale.getValorDiaria());
-        copia.setDisponivel(chale.getDisponivel());
         copia.setCapacidade(chale.getCapacidade());
         copia.setDescricao(chale.getDescricao());
         copia.setStatus(chale.getStatus());
