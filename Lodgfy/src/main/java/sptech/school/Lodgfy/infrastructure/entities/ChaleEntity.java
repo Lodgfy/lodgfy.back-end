@@ -25,8 +25,6 @@ public class ChaleEntity {
     @Column(name = "valor_diaria")
     private BigDecimal valorDiaria;
 
-    private Boolean disponivel;
-
     @NotNull
     private Integer capacidade;
 
@@ -36,7 +34,7 @@ public class ChaleEntity {
     private StatusChale status;
 
     public enum StatusChale {
-        DISPONIVEL, OCUPADO, RESERVADO, MANUTENCAO
+        DISPONIVEL, OCUPADO, LIMPEZA
     }
 
     // Getters e Setters
@@ -80,14 +78,6 @@ public class ChaleEntity {
 
     public void setValorDiaria(BigDecimal valorDiaria) {
         this.valorDiaria = valorDiaria;
-    }
-
-    public Boolean getDisponivel() {
-        return disponivel;
-    }
-
-    public void setDisponivel(Boolean disponivel) {
-        this.disponivel = disponivel;
     }
 
     public Integer getCapacidade() {

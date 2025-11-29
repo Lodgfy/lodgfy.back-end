@@ -30,9 +30,6 @@ public class ChaleRequestDTO {
     @DecimalMin(value = "0.0", message = "Valor da diária deve ser positivo")
     private BigDecimal valorDiaria;
 
-    @Schema(example = "true", description = "Indica se o chalé está disponível")
-    private Boolean disponivel;
-
     @Schema(example = "4", description = "Capacidade de pessoas")
     @NotNull(message = "Capacidade é obrigatória")
     @Min(value = 1, message = "Capacidade deve ser maior que zero")
@@ -41,6 +38,6 @@ public class ChaleRequestDTO {
     @Schema(example = "Chalé luxuoso com vista para as montanhas", description = "Descrição do chalé")
     private String descricao;
 
-    @Schema(example = "DISPONIVEL", description = "Status do chalé")
+    @Schema(example = "DISPONIVEL", description = "Status do chalé (DISPONIVEL, OCUPADO, LIMPEZA)")
     private StatusChale status;
 }

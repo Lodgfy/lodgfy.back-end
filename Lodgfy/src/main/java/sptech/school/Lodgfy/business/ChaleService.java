@@ -2,9 +2,11 @@ package sptech.school.Lodgfy.business;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import sptech.school.Lodgfy.business.dto.ChaleDisponibilidadeRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleResponseDTO;
 import sptech.school.Lodgfy.business.exceptions.ChaleJaExisteException;
+import sptech.school.Lodgfy.business.exceptions.DataReservaInvalidaException;
 import sptech.school.Lodgfy.business.mapsstruct.ChaleMapper;
 import sptech.school.Lodgfy.business.observer.ChaleManager;
 import sptech.school.Lodgfy.business.observer.ChaleObserver;
@@ -79,7 +81,6 @@ public class ChaleService {
                     chale.setNumero(chaleAtualizado.getNumero());
                     chale.setTipo(chaleAtualizado.getTipo());
                     chale.setValorDiaria(chaleAtualizado.getValorDiaria());
-                    chale.setDisponivel(chaleAtualizado.getDisponivel());
                     chale.setCapacidade(chaleAtualizado.getCapacidade());
                     chale.setDescricao(chaleAtualizado.getDescricao());
                     chale.setStatus(chaleAtualizado.getStatus());
@@ -106,6 +107,21 @@ public class ChaleService {
                 repository.findByNomeContainsIgnoreCaseOrNumeroContainsIgnoreCase(nome, numero));
     }
 
+    public List<ChaleResponseDTO> buscarChalesDisponiveis(ChaleDisponibilidadeRequestDTO request) {
+        // Validar que check-out é depois de check-in
+        if (!request.getDataCheckOut().isAfter(request.getDataCheckIn())) {
+            throw new DataReservaInvalidaException("Data de check-out deve ser posterior à data de check-in");
+        }
+
+        List<ChaleEntity> chalesDisponiveis = repository.buscarChalesDisponiveis(
+                request.getQuantidadePessoas(),
+                request.getDataCheckIn(),
+                request.getDataCheckOut()
+        );
+
+        return mapper.paraListaChaleResponseDTO(chalesDisponiveis);
+    }
+
 
     public Optional<ChaleResponseDTO> atualizarStatus(Long id, ChaleEntity.StatusChale novoStatus) {
         return repository.findById(id)
@@ -120,25 +136,10 @@ public class ChaleService {
                 });
     }
 
-    public Optional<ChaleResponseDTO> atualizarDisponibilidade(Long id, Boolean disponivel) {
-        return repository.findById(id)
-                .map(chale -> {
-                    chale.setDisponivel(disponivel);
-                    ChaleEntity chaleSalvo = repository.save(chale);
-
-                    chaleManager.notificar(chaleSalvo, ChaleObserver.ChaleEventType.DISPONIBILIDADE_ALTERADA);
-
-                    return mapper.paraChaleResponseDTO(chaleSalvo);
-                });
-    }
-
 
     private ChaleObserver.ChaleEventType detectarTipoMudanca(ChaleEntity anterior, ChaleEntity atual) {
         if (!anterior.getStatus().equals(atual.getStatus())) {
             return ChaleObserver.ChaleEventType.STATUS_ALTERADO;
-        }
-        if (!anterior.getDisponivel().equals(atual.getDisponivel())) {
-            return ChaleObserver.ChaleEventType.DISPONIBILIDADE_ALTERADA;
         }
         if (anterior.getValorDiaria() != null &&
             !anterior.getValorDiaria().equals(atual.getValorDiaria())) {
@@ -157,7 +158,6 @@ public class ChaleService {
         copia.setNumero(chale.getNumero());
         copia.setTipo(chale.getTipo());
         copia.setValorDiaria(chale.getValorDiaria());
-        copia.setDisponivel(chale.getDisponivel());
         copia.setCapacidade(chale.getCapacidade());
         copia.setDescricao(chale.getDescricao());
         copia.setStatus(chale.getStatus());

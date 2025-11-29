@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sptech.school.Lodgfy.business.ChaleService;
+import sptech.school.Lodgfy.business.dto.ChaleDisponibilidadeRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleRequestDTO;
 import sptech.school.Lodgfy.business.dto.ChaleResponseDTO;
 
@@ -95,5 +96,20 @@ public class ChaleController {
 
         return chales.isEmpty() ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(chales);
+    }
+
+    @Operation(summary = "Busca chalés disponíveis", description = "Retorna uma lista de chalés disponíveis para o período e quantidade de pessoas informados")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "204", description = "Nenhum chalé disponível encontrado")
+    })
+    @PostMapping("/disponiveis")
+    public ResponseEntity<List<ChaleResponseDTO>> buscarChalesDisponiveis(
+            @Valid @RequestBody ChaleDisponibilidadeRequestDTO request) {
+        List<ChaleResponseDTO> chalesDisponiveis = service.buscarChalesDisponiveis(request);
+
+        return chalesDisponiveis.isEmpty() ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(chalesDisponiveis);
     }
 }

@@ -575,7 +575,6 @@ class BusinessRulesIntegrationTest {
         chale.setNumero(numero);
         chale.setTipo("Luxo");
         chale.setValorDiaria(new BigDecimal("350.00"));
-        chale.setDisponivel(true);
         chale.setCapacidade(4);
         chale.setDescricao("Chalé luxuoso");
         chale.setStatus(StatusChale.DISPONIVEL);

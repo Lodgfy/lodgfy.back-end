@@ -42,7 +42,6 @@ public class ObserverPatternDemo implements CommandLineRunner {
         novoChale.setNumero("101");
         novoChale.setTipo("Luxo");
         novoChale.setValorDiaria(new BigDecimal("350.00"));
-        novoChale.setDisponivel(true);
         novoChale.setCapacidade(4);
         novoChale.setDescricao("Chalé luxuoso com vista para o mar");
         novoChale.setStatus(ChaleEntity.StatusChale.DISPONIVEL);
@@ -55,9 +54,9 @@ public class ObserverPatternDemo implements CommandLineRunner {
         chaleService.atualizarStatus(chaleCriado.getIdChale(), ChaleEntity.StatusChale.OCUPADO);
         Thread.sleep(2000);
 
-        // 3. Alterar disponibilidade (dispara evento DISPONIBILIDADE_ALTERADA)
-        log.info("\n>>> 3. Tornando chalé indisponível...");
-        chaleService.atualizarDisponibilidade(chaleCriado.getIdChale(), false);
+        // 3. Alterar para LIMPEZA (dispara evento STATUS_ALTERADO)
+        log.info("\n>>> 3. Alterando status do chalé para LIMPEZA...");
+        chaleService.atualizarStatus(chaleCriado.getIdChale(), ChaleEntity.StatusChale.LIMPEZA);
         Thread.sleep(2000);
 
         // 4. Atualizar dados gerais (dispara evento ATUALIZADO/PRECO_ALTERADO)
@@ -67,7 +66,6 @@ public class ObserverPatternDemo implements CommandLineRunner {
         chaleAtualizado.setNumero("101");
         chaleAtualizado.setTipo("Luxo Premium");
         chaleAtualizado.setValorDiaria(new BigDecimal("450.00")); // Preço alterado
-        chaleAtualizado.setDisponivel(false);
         chaleAtualizado.setCapacidade(4);
         chaleAtualizado.setDescricao("Chalé luxuoso com vista para o mar - Reformado");
         chaleAtualizado.setStatus(ChaleEntity.StatusChale.OCUPADO);
@@ -75,9 +73,9 @@ public class ObserverPatternDemo implements CommandLineRunner {
         chaleService.atualizarChale(chaleCriado.getIdChale(), chaleAtualizado);
         Thread.sleep(2000);
 
-        // 5. Alterar para manutenção
-        log.info("\n>>> 5. Colocando chalé em manutenção...");
-        chaleService.atualizarStatus(chaleCriado.getIdChale(), ChaleEntity.StatusChale.MANUTENCAO);
+        // 5. Voltar para disponível
+        log.info("\n>>> 5. Voltando chalé para DISPONIVEL...");
+        chaleService.atualizarStatus(chaleCriado.getIdChale(), ChaleEntity.StatusChale.DISPONIVEL);
         Thread.sleep(2000);
 
         log.info("\n╔═══════════════════════════════════════════════════╗");
